@@ -6,9 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Store active transcription sessions
-const activeSessions = new Map();
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -17,32 +14,24 @@ serve(async (req) => {
   try {
     const formData = await req.formData();
     const callSid = formData.get('CallSid')?.toString();
-    const callStatus = formData.get('CallStatus')?.toString();
-    const streamSid = formData.get('StreamSid')?.toString();
+    const from = formData.get('From')?.toString();
     
-    console.log('Twilio webhook received:', { callSid, callStatus, streamSid });
+    console.log('Twilio webhook called:', { callSid, from });
 
-    if (callStatus === 'in-progress' && !activeSessions.has(callSid)) {
-      // Start AssemblyAI transcription for this call
-      await startAssemblyAITranscription(callSid, streamSid);
-      activeSessions.set(callSid, { streamSid, startTime: new Date() });
-    } else if (callStatus === 'completed' || callStatus === 'failed') {
-      // Clean up session
-      if (activeSessions.has(callSid)) {
-        await stopAssemblyAITranscription(callSid);
-        activeSessions.delete(callSid);
-      }
-    }
+    // Get the ngrok URL for the WebSocket endpoint
+    const baseUrl = req.headers.get('host');
+    const protocol = req.headers.get('x-forwarded-proto') || 'https';
+    const wsUrl = `wss://${baseUrl}/functions/v1/audio-stream`;
 
-    // TwiML response to start media streaming
+    // TwiML response to start media streaming and connect to our WebSocket
     const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
     <Response>
+        <Say voice="alice">Hello! I'm an AI assistant monitoring your call for assistance requests. How can I help you today?</Say>
         <Start>
-            <Stream url="wss://htegorovrqorrfydgadn.supabase.co/functions/v1/audio-stream" />
+            <Stream url="${wsUrl}" />
         </Start>
-        <Say voice="alice">Hello! I'm an AI assistant. How can I help you today?</Say>
         <Pause length="30"/>
-        <Say voice="alice">Thank you for calling. Goodbye!</Say>
+        <Say voice="alice">Thank you for calling. If you need help, just say the word help. Goodbye!</Say>
     </Response>`;
 
     return new Response(twimlResponse, {
@@ -70,28 +59,3 @@ serve(async (req) => {
     });
   }
 });
-
-async function startAssemblyAITranscription(callSid: string, streamSid: string) {
-  try {
-    console.log(`Starting AssemblyAI transcription for call: ${callSid}`);
-    
-    // Initialize AssemblyAI streaming transcription
-    const assemblyAIKey = Deno.env.get('ASSEMBLY_AI_API_KEY') || '34f52f7f50354e17821f52e80f366877';
-    
-    // This would typically involve setting up a WebSocket connection to AssemblyAI
-    // For now, we'll log that transcription has started
-    console.log('AssemblyAI transcription session started for:', callSid);
-    
-  } catch (error) {
-    console.error('Error starting AssemblyAI transcription:', error);
-  }
-}
-
-async function stopAssemblyAITranscription(callSid: string) {
-  try {
-    console.log(`Stopping AssemblyAI transcription for call: ${callSid}`);
-    // Clean up AssemblyAI session
-  } catch (error) {
-    console.error('Error stopping AssemblyAI transcription:', error);
-  }
-}

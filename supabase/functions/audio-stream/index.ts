@@ -20,12 +20,10 @@ serve(async (req) => {
     
     let assemblyAISocket: WebSocket | null = null;
     let callSid: string | null = null;
-    let emergencyContact: string = '+919178379226'; // Default emergency contact
+    let emergencyContact: string = '+919178379226';
 
     socket.onopen = () => {
-      console.log('Twilio WebSocket connected');
-      
-      // Connect to AssemblyAI
+      console.log('🔗 Twilio WebSocket connected');
       connectToAssemblyAI();
     };
 
@@ -33,78 +31,109 @@ serve(async (req) => {
       try {
         const message = JSON.parse(event.data);
         
-        if (message.event === 'start') {
-          callSid = message.start?.callSid;
-          console.log('Call started:', callSid);
-        } else if (message.event === 'media') {
-          // Forward audio data to AssemblyAI
-          if (assemblyAISocket && assemblyAISocket.readyState === WebSocket.OPEN) {
-            const audioData = {
-              audio_data: message.media.payload
-            };
-            assemblyAISocket.send(JSON.stringify(audioData));
-          }
+        switch (message.event) {
+          case 'connected':
+            console.log('📞 Twilio stream connected');
+            break;
+            
+          case 'start':
+            callSid = message.start?.callSid;
+            console.log('🎬 Call started:', callSid);
+            break;
+            
+          case 'media':
+            // Forward audio data to AssemblyAI
+            if (assemblyAISocket && assemblyAISocket.readyState === WebSocket.OPEN) {
+              const audioData = {
+                audio_data: message.media.payload
+              };
+              assemblyAISocket.send(JSON.stringify(audioData));
+            }
+            break;
+            
+          case 'stop':
+            console.log('🛑 Call stopped');
+            break;
         }
       } catch (error) {
-        console.error('Error processing Twilio message:', error);
+        console.error('❌ Error processing Twilio message:', error);
       }
     };
 
     socket.onclose = () => {
-      console.log('Twilio WebSocket disconnected');
+      console.log('📴 Twilio WebSocket disconnected');
       if (assemblyAISocket) {
         assemblyAISocket.close();
       }
     };
 
+    socket.onerror = (error) => {
+      console.error('❌ Twilio WebSocket error:', error);
+    };
+
     function connectToAssemblyAI() {
       const assemblyAIKey = Deno.env.get('ASSEMBLY_AI_API_KEY') || '34f52f7f50354e17821f52e80f366877';
+      
+      // AssemblyAI real-time transcription WebSocket URL
+      // Using 8000 Hz sample rate for Twilio compatibility
       const assemblyAIUrl = `wss://api.assemblyai.com/v2/realtime/ws?sample_rate=8000&token=${assemblyAIKey}`;
       
+      console.log('🔗 Connecting to AssemblyAI...');
       assemblyAISocket = new WebSocket(assemblyAIUrl);
       
       assemblyAISocket.onopen = () => {
-        console.log('Connected to AssemblyAI');
+        console.log('✅ Connected to AssemblyAI real-time transcription');
       };
       
       assemblyAISocket.onmessage = async (event) => {
         try {
           const data = JSON.parse(event.data);
           
-          if (data.message_type === 'FinalTranscript') {
-            const transcript = data.text;
-            console.log('Final transcript:', transcript);
+          if (data.message_type === 'FinalTranscript' && data.text) {
+            const transcript = data.text.trim();
+            console.log('📝 Final transcript:', transcript);
             
-            // Check for trigger words
+            // Check for trigger words in the final transcript
             const detectedKeywords = triggerWords.filter(word => 
               transcript.toLowerCase().includes(word.toLowerCase())
             );
             
             if (detectedKeywords.length > 0) {
               console.log('🚨 TRIGGER WORDS DETECTED:', detectedKeywords);
-              await sendEmergencyAlert(transcript, detectedKeywords, emergencyContact, callSid);
+              console.log('📱 Sending emergency SMS...');
+              
+              const smsResult = await sendEmergencyAlert(transcript, detectedKeywords, emergencyContact, callSid);
+              
+              if (smsResult) {
+                console.log('✅ Emergency SMS sent successfully!');
+              } else {
+                console.log('❌ Failed to send emergency SMS');
+              }
             }
-          } else if (data.message_type === 'PartialTranscript') {
-            console.log('Partial transcript:', data.text);
+          } else if (data.message_type === 'PartialTranscript' && data.text) {
+            // Log partial transcripts for debugging
+            console.log('🔄 Partial:', data.text);
+          } else if (data.message_type === 'SessionBegins') {
+            console.log('🎯 AssemblyAI session started:', data.session_id);
           }
         } catch (error) {
-          console.error('Error processing AssemblyAI message:', error);
+          console.error('❌ Error processing AssemblyAI message:', error);
         }
       };
       
       assemblyAISocket.onerror = (error) => {
-        console.error('AssemblyAI WebSocket error:', error);
+        console.error('❌ AssemblyAI WebSocket error:', error);
       };
       
-      assemblyAISocket.onclose = () => {
-        console.log('AssemblyAI WebSocket disconnected');
+      assemblyAISocket.onclose = (event) => {
+        console.log('📴 AssemblyAI WebSocket disconnected:', event.code, event.reason);
       };
     }
 
     return response;
   }
 
-  return new Response('WebSocket endpoint', { headers: corsHeaders });
+  return new Response('WebSocket endpoint for audio streaming', { headers: corsHeaders });
 });
 
 async function sendEmergencyAlert(transcript: string, keywords: string[], emergencyContact: string, callSid: string | null) {
@@ -113,11 +142,21 @@ async function sendEmergencyAlert(transcript: string, keywords: string[], emerge
     const twilioAuthToken = Deno.env.get('TWILIO_AUTH_TOKEN');
 
     if (!twilioSid || !twilioAuthToken) {
-      console.error('Missing Twilio credentials');
+      console.error('❌ Missing Twilio credentials for SMS');
       return false;
     }
 
-    const message = `🚨 EMERGENCY ALERT 🚨\n\nUSER NEEDS HELP!\n\nKeywords detected: ${keywords.join(', ')}\nCall ID: ${callSid || 'Unknown'}\nTranscript: "${transcript}"\n\nTime: ${new Date().toLocaleString()}\n\nPlease respond immediately!`;
+    const message = `🚨 EMERGENCY ALERT 🚨
+
+USER NEEDS HELP!
+
+Keywords detected: ${keywords.join(', ')}
+Call ID: ${callSid || 'Unknown'}
+Transcript: "${transcript}"
+
+Time: ${new Date().toLocaleString()}
+
+Please respond immediately!`;
 
     const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`;
     
@@ -125,6 +164,8 @@ async function sendEmergencyAlert(transcript: string, keywords: string[], emerge
     formData.append('From', '+18152485651');
     formData.append('To', emergencyContact);
     formData.append('Body', message);
+
+    console.log('📤 Sending SMS to:', emergencyContact);
 
     const response = await fetch(twilioUrl, {
       method: 'POST',
@@ -136,15 +177,16 @@ async function sendEmergencyAlert(transcript: string, keywords: string[], emerge
     });
 
     if (response.ok) {
-      console.log('✅ Emergency SMS sent successfully to:', emergencyContact);
+      const result = await response.json();
+      console.log('✅ Emergency SMS sent successfully! Message SID:', result.sid);
       return true;
     } else {
       const errorText = await response.text();
-      console.error('❌ Failed to send emergency SMS:', errorText);
+      console.error('❌ Failed to send emergency SMS:', response.status, errorText);
       return false;
     }
   } catch (error) {
-    console.error('Error sending emergency SMS:', error);
+    console.error('❌ Error sending emergency SMS:', error);
     return false;
   }
 }
