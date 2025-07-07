@@ -12,10 +12,14 @@ serve(async (req) => {
   }
 
   try {
-    const { phoneNumber } = await req.json();
+    const { phoneNumber, emergencyContactNumber } = await req.json();
     
     if (!phoneNumber) {
       throw new Error('Phone number is required');
+    }
+
+    if (!emergencyContactNumber) {
+      throw new Error('Emergency contact number is required');
     }
 
     // Get credentials from Supabase secrets
@@ -32,10 +36,10 @@ serve(async (req) => {
       agent_id: 'agent_01jyy3hts1fpsszcfrdgcfv2vn',
       agent_phone_number_id: 'phnum_01jzjz0m64e2ms2h05j8x96s53',
       to_number: phoneNumber,
+      webhook_url: `https://htegorovrqorrfydgadn.supabase.co/functions/v1/twilio-webhook`,
       conversation_initiation_client_data: {
         trigger_words: ['help', 'emergency', 'support', 'urgent', 'problem', 'assistance'],
-        alert_number: '+919178379226',
-        webhook_url: `https://htegorovrqorrfydgadn.supabase.co/functions/v1/process-speech`
+        alert_number: emergencyContactNumber,
       }
     };
 

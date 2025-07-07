@@ -21,6 +21,7 @@ interface CallLog {
 
 const CallSystem = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [emergencyContactNumber, setEmergencyContactNumber] = useState('+919178379226');
   const [isCallInProgress, setIsCallInProgress] = useState(false);
   const [callProgress, setCallProgress] = useState(0);
   const [callLogs, setCallLogs] = useState<CallLog[]>([]);
@@ -57,7 +58,7 @@ const CallSystem = () => {
     try {
       // Call the Supabase edge function to initiate the call
       const { data, error } = await supabase.functions.invoke('initiate-call', {
-        body: { phoneNumber }
+        body: { phoneNumber, emergencyContactNumber }
       });
 
       if (error) {
@@ -142,6 +143,18 @@ const CallSystem = () => {
             </h1>
           </div>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <div className="space-y-2">
+            <Label htmlFor="emergency">Emergency Contact Number</Label>
+            <Input
+              id="emergency"
+              type="tel"
+              placeholder="+91 9178379226"
+              value={emergencyContactNumber}
+              onChange={(e) => setEmergencyContactNumber(e.target.value)}
+              disabled={isCallInProgress}
+            />
+          </div>
+          
             Automated outbound calling with Eleven Labs Conversational AI and keyword-based SMS alerts
           </p>
         </div>
