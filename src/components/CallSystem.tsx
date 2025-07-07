@@ -28,9 +28,97 @@ const CallSystem = () => {
   const [currentCall, setCurrentCall] = useState<CallLog | null>(null);
   const [testTranscript, setTestTranscript] = useState('');
   const [isTestingTriggers, setIsTestingTriggers] = useState(false);
+  const [testTranscript, setTestTranscript] = useState('');
+  const [isTestingTriggers, setIsTestingTriggers] = useState(false);
+  const [testTranscript, setTestTranscript] = useState('');
+  const [isTestingTriggers, setIsTestingTriggers] = useState(false);
   const { toast } = useToast();
 
   const triggerWords = ['help', 'emergency', 'support', 'urgent', 'problem', 'assistance'];
+
+  const testTriggerWords = async () => {
+    if (!testTranscript.trim()) {
+      toast({
+        title: "Test transcript required",
+        description: "Please enter some text to test trigger word detection.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsTestingTriggers(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('test-trigger-detection', {
+        body: { 
+          transcript: testTranscript,
+          emergencyContact: emergencyContactNumber 
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: data.alert_sent ? "🚨 Trigger Words Detected!" : "✅ No Trigger Words",
+        description: data.alert_sent 
+          ? `Keywords found: ${data.keywords_detected.join(', ')}. Emergency SMS sent!`
+          : "No trigger words detected in the test transcript.",
+        variant: data.alert_sent ? "destructive" : "default",
+      });
+
+    } catch (error) {
+      console.error('Test failed:', error);
+      toast({
+        title: "Test failed",
+        description: "Failed to test trigger word detection.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTestingTriggers(false);
+    }
+  };
+
+  const testTriggerWords = async () => {
+    if (!testTranscript.trim()) {
+      toast({
+        title: "Test transcript required",
+        description: "Please enter some text to test trigger word detection.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsTestingTriggers(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('test-trigger-detection', {
+        body: { 
+          transcript: testTranscript,
+          emergencyContact: emergencyContactNumber 
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: data.alert_sent ? "🚨 Trigger Words Detected!" : "✅ No Trigger Words",
+        description: data.alert_sent 
+          ? `Keywords found: ${data.keywords_detected.join(', ')}. Emergency SMS sent!`
+          : "No trigger words detected in the test transcript.",
+        variant: data.alert_sent ? "destructive" : "default",
+      });
+
+    } catch (error) {
+      console.error('Test failed:', error);
+      toast({
+        title: "Test failed",
+        description: "Failed to test trigger word detection.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTestingTriggers(false);
+    }
+  };
 
   const testTriggerWords = async () => {
     if (!testTranscript.trim()) {
@@ -288,56 +376,6 @@ const CallSystem = () => {
 
         {/* Configuration & Stats */}
         <div className="grid md:grid-cols-2 gap-6">
-          {/* Debug Testing Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                🧪 Debug & Testing
-              </CardTitle>
-              <CardDescription>
-                Test the trigger word detection system
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="testTranscript">Test Transcript</Label>
-                <Input
-                  id="testTranscript"
-                  placeholder="Type a message with 'help' or 'emergency'..."
-                  value={testTranscript}
-                  onChange={(e) => setTestTranscript(e.target.value)}
-                />
-              </div>
-              
-              <Button 
-                variant="warning" 
-                onClick={testTriggerWords}
-                disabled={isTestingTriggers}
-                className="w-full"
-              >
-                {isTestingTriggers ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Testing...
-                  </>
-                ) : (
-                  <>
-                    🧪 Test Trigger Detection
-                  </>
-                )}
-              </Button>
-              
-              <div className="text-xs text-muted-foreground">
-                <p><strong>Tip:</strong> Try phrases like:</p>
-                <ul className="list-disc list-inside mt-1">
-                  <li>"I need help with something"</li>
-                  <li>"This is an emergency"</li>
-                  <li>"Can you provide support?"</li>
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
-
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -351,18 +389,13 @@ const CallSystem = () => {
                 <div className="flex flex-wrap gap-2">
                   {triggerWords.map((word) => (
                     <Badge key={word} variant="secondary">{word}</Badge>
-                  ))}
+                    📱 Test SMS Delivery
                 </div>
               </div>
               <div>
                 <h4 className="font-medium">Features Enabled</h4>
                 <ul className="text-sm text-muted-foreground mt-2 space-y-1">
-                  <li>• AssemblyAI Real-time STT</li>
-                  <li>• Twilio Voice Streaming</li>
-                  <li>• Keyword Detection</li>
-                  <li>• Automatic SMS Alerts</li>
-                  <li>• Call Transcription</li>
-                </ul>
+                <p><strong>Debug:</strong> This will test SMS delivery to your phone number (+91 9178379226) and show detailed logs.</p>
               </div>
             </CardContent>
           </Card>
