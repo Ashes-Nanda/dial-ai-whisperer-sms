@@ -187,18 +187,6 @@ const CallSystem = () => {
             </h1>
           </div>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          <div className="space-y-2">
-            <Label htmlFor="emergency">Emergency Contact Number</Label>
-            <Input
-              id="emergency"
-              type="tel"
-              placeholder="+91 9178379226"
-              value={emergencyContactNumber}
-              onChange={(e) => setEmergencyContactNumber(e.target.value)}
-              disabled={isCallInProgress}
-            />
-          </div>
-          
             Automated outbound calling with Eleven Labs Conversational AI and keyword-based SMS alerts
           </p>
         </div>
@@ -223,6 +211,18 @@ const CallSystem = () => {
                 placeholder="+1 (555) 123-4567"
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
+                disabled={isCallInProgress}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="emergency">Emergency Contact Number</Label>
+              <Input
+                id="emergency"
+                type="tel"
+                placeholder="+91 9178379226"
+                value={emergencyContactNumber}
+                onChange={(e) => setEmergencyContactNumber(e.target.value)}
                 disabled={isCallInProgress}
               />
             </div>
