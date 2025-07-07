@@ -56,6 +56,9 @@ serve(async (req) => {
     const result = await elevenLabsResponse.json();
 
     console.log('Call initiated via Eleven Labs:', result);
+    console.log('Calling number:', phoneNumber);
+    console.log('From number: +18152485651');
+    console.log('Agent ID: agent_01jyy3hts1fpsszcfrdgcfv2vn');
 
     return new Response(
       JSON.stringify({ 
