@@ -19,48 +19,52 @@ serve(async (req) => {
     }
 
     // Get credentials from Supabase secrets
-    const twilioSid = Deno.env.get('TWILIO_SID');
-    const twilioAuthToken = Deno.env.get('TWILIO_AUTH_TOKEN');
     const elevenLabsApiKey = Deno.env.get('ELEVEN_LABS_API');
 
-    if (!twilioSid || !twilioAuthToken || !elevenLabsApiKey) {
-      throw new Error('Missing required API credentials');
+    if (!elevenLabsApiKey) {
+      throw new Error('Missing Eleven Labs API key');
     }
 
-    // Twilio API call to initiate outbound call
-    const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Calls.json`;
+    // Use Eleven Labs Conversational AI outbound call API
+    const elevenLabsUrl = 'https://api.elevenlabs.io/v1/convai/twilio/outbound-call';
     
-    const formData = new URLSearchParams();
-    formData.append('From', '+18152485651'); // Your Twilio number
-    formData.append('To', phoneNumber);
-    formData.append('Url', `https://htegorovrqorrfydgadn.supabase.co/functions/v1/handle-call`);
-    formData.append('Method', 'POST');
+    const callData = {
+      agent_id: 'agent_01jyy3hts1fpsszcfrdgcfv2vn',
+      agent_phone_number_id: 'phnum_01jzjz0m64e2ms2h05j8x96s53',
+      to_number: phoneNumber,
+      conversation_initiation_client_data: {
+        trigger_words: ['help', 'emergency', 'support', 'urgent', 'problem', 'assistance'],
+        alert_number: '+919178379226',
+        webhook_url: `https://htegorovrqorrfydgadn.supabase.co/functions/v1/process-speech`
+      }
+    };
 
-    const twilioResponse = await fetch(twilioUrl, {
+    const elevenLabsResponse = await fetch(elevenLabsUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Basic ${btoa(`${twilioSid}:${twilioAuthToken}`)}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'xi-api-key': elevenLabsApiKey,
+        'Content-Type': 'application/json',
       },
-      body: formData,
+      body: JSON.stringify(callData),
     });
 
-    if (!twilioResponse.ok) {
-      const error = await twilioResponse.text();
-      throw new Error(`Twilio API error: ${error}`);
+    if (!elevenLabsResponse.ok) {
+      const error = await elevenLabsResponse.text();
+      throw new Error(`Eleven Labs API error: ${error}`);
     }
 
-    const callData = await twilioResponse.json();
+    const result = await elevenLabsResponse.json();
 
-    console.log('Call initiated:', callData);
+    console.log('Call initiated via Eleven Labs:', result);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        callSid: callData.sid,
-        status: callData.status,
-        to: callData.to,
-        from: callData.from
+        callSid: result.callSid,
+        conversationId: result.conversation_id,
+        message: result.message,
+        to: phoneNumber,
+        from: '+18152485651'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
