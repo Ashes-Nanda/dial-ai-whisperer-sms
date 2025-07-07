@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -41,17 +42,6 @@ const CallSystem = () => {
     setIsCallInProgress(true);
     setCallProgress(0);
 
-    // Simulate call progress for demo purposes
-    const progressInterval = setInterval(() => {
-      setCallProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(progressInterval);
-          return 100;
-        }
-        return prev + 10;
-      });
-    }, 500);
-
     const newCall: CallLog = {
       id: `call-${Date.now()}`,
       phoneNumber,
@@ -64,33 +54,67 @@ const CallSystem = () => {
 
     setCurrentCall(newCall);
 
-    toast({
-      title: "Call initiated",
-      description: `Connecting to ${phoneNumber} with Eleven Labs AI...`,
-    });
+    try {
+      // Call the Supabase edge function to initiate the call
+      const { data, error } = await supabase.functions.invoke('initiate-call', {
+        body: { phoneNumber }
+      });
 
-    // Simulate call completion after 5 seconds
-    setTimeout(() => {
-      const completedCall: CallLog = {
-        ...newCall,
-        status: 'completed',
-        duration: '02:34',
-        keywordsDetected: ['help', 'support'],
-        transcript: "Hello, I need some help with my account. Can you provide support for my billing issue?",
-      };
-
-      setCallLogs(prev => [completedCall, ...prev]);
-      setCurrentCall(null);
-      setIsCallInProgress(false);
-      setCallProgress(0);
-      setPhoneNumber('');
+      if (error) {
+        throw error;
+      }
 
       toast({
-        title: "Call completed",
-        description: "Keywords detected! SMS notifications sent.",
-        variant: "default",
+        title: "Call initiated",
+        description: `Connecting to ${phoneNumber} with AI system...`,
       });
-    }, 5000);
+
+      // Simulate progress tracking
+      const progressInterval = setInterval(() => {
+        setCallProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(progressInterval);
+            return 100;
+          }
+          return prev + 10;
+        });
+      }, 500);
+
+      // Simulate call completion after 5 seconds
+      setTimeout(() => {
+        const completedCall: CallLog = {
+          ...newCall,
+          status: 'completed',
+          duration: '02:34',
+          keywordsDetected: ['help', 'support'],
+          transcript: "Hello, I need some help with my account. Can you provide support for my billing issue?",
+        };
+
+        setCallLogs(prev => [completedCall, ...prev]);
+        setCurrentCall(null);
+        setIsCallInProgress(false);
+        setCallProgress(0);
+        setPhoneNumber('');
+
+        toast({
+          title: "Call completed",
+          description: "Keywords detected! SMS notifications sent.",
+          variant: "default",
+        });
+      }, 5000);
+
+    } catch (error) {
+      console.error('Call initiation failed:', error);
+      setIsCallInProgress(false);
+      setCurrentCall(null);
+      setCallProgress(0);
+      
+      toast({
+        title: "Call failed",
+        description: "Failed to initiate the call. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const getStatusIcon = (status: string) => {
