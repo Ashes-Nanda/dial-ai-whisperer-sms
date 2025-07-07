@@ -26,9 +26,97 @@ const CallSystem = () => {
   const [callProgress, setCallProgress] = useState(0);
   const [callLogs, setCallLogs] = useState<CallLog[]>([]);
   const [currentCall, setCurrentCall] = useState<CallLog | null>(null);
+  const [testTranscript, setTestTranscript] = useState('');
+  const [isTestingTriggers, setIsTestingTriggers] = useState(false);
+  const [testTranscript, setTestTranscript] = useState('');
+  const [isTestingTriggers, setIsTestingTriggers] = useState(false);
   const { toast } = useToast();
 
   const triggerWords = ['help', 'emergency', 'support', 'urgent', 'problem', 'assistance'];
+
+  const testTriggerWords = async () => {
+    if (!testTranscript.trim()) {
+      toast({
+        title: "Test transcript required",
+        description: "Please enter some text to test trigger word detection.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsTestingTriggers(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('test-trigger-detection', {
+        body: { 
+          transcript: testTranscript,
+          emergencyContact: emergencyContactNumber 
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: data.alert_sent ? "🚨 Trigger Words Detected!" : "✅ No Trigger Words",
+        description: data.alert_sent 
+          ? `Keywords found: ${data.keywords_detected.join(', ')}. Emergency SMS sent!`
+          : "No trigger words detected in the test transcript.",
+        variant: data.alert_sent ? "destructive" : "default",
+      });
+
+    } catch (error) {
+      console.error('Test failed:', error);
+      toast({
+        title: "Test failed",
+        description: "Failed to test trigger word detection.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTestingTriggers(false);
+    }
+  };
+
+  const testTriggerWords = async () => {
+    if (!testTranscript.trim()) {
+      toast({
+        title: "Test transcript required",
+        description: "Please enter some text to test trigger word detection.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsTestingTriggers(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('test-trigger-detection', {
+        body: { 
+          transcript: testTranscript,
+          emergencyContact: emergencyContactNumber 
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: data.alert_sent ? "🚨 Trigger Words Detected!" : "✅ No Trigger Words",
+        description: data.alert_sent 
+          ? `Keywords found: ${data.keywords_detected.join(', ')}. Emergency SMS sent!`
+          : "No trigger words detected in the test transcript.",
+        variant: data.alert_sent ? "destructive" : "default",
+      });
+
+    } catch (error) {
+      console.error('Test failed:', error);
+      toast({
+        title: "Test failed",
+        description: "Failed to test trigger word detection.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTestingTriggers(false);
+    }
+  };
 
   const handleInitiateCall = async () => {
     if (!phoneNumber.trim()) {
