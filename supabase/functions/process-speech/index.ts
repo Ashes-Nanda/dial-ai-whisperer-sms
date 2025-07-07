@@ -73,8 +73,8 @@ serve(async (req) => {
 
 async function sendAlertSMS(transcript: string, keywords: string[], caller: string) {
   try {
-    const twilioSid = Deno.env.get('TWILLIO_SID');
-    const twilioAuthToken = Deno.env.get('TWILLIO_AUTH_TOKEN');
+    const twilioSid = Deno.env.get('TWILIO_SID');
+    const twilioAuthToken = Deno.env.get('TWILIO_AUTH_TOKEN');
 
     const message = `🚨 KEYWORD ALERT 🚨\n\nKeywords detected: ${keywords.join(', ')}\nFrom: ${caller}\nTranscript: "${transcript}"\n\nTime: ${new Date().toLocaleString()}`;
 

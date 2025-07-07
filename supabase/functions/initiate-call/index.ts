@@ -19,8 +19,8 @@ serve(async (req) => {
     }
 
     // Get credentials from Supabase secrets
-    const twilioSid = Deno.env.get('TWILLIO_SID');
-    const twilioAuthToken = Deno.env.get('TWILLIO_AUTH_TOKEN');
+    const twilioSid = Deno.env.get('TWILIO_SID');
+    const twilioAuthToken = Deno.env.get('TWILIO_AUTH_TOKEN');
     const elevenLabsApiKey = Deno.env.get('ELEVEN_LABS_API');
 
     if (!twilioSid || !twilioAuthToken || !elevenLabsApiKey) {
