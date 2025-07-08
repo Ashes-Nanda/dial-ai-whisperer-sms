@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Phone, PhoneCall, MessageSquare, Settings, Loader2, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Phone, PhoneCall, MessageSquare, Settings, Loader2, CheckCircle, AlertTriangle, Database } from 'lucide-react';
+import CallHistory from './CallHistory';
 
 interface CallLog {
   id: string;
@@ -28,6 +29,7 @@ const CallSystem = () => {
   const [currentCall, setCurrentCall] = useState<CallLog | null>(null);
   const [testTranscript, setTestTranscript] = useState('');
   const [isTestingTriggers, setIsTestingTriggers] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const { toast } = useToast();
 
   const triggerWords = ['help', 'emergency', 'support', 'urgent', 'problem', 'assistance'];
@@ -141,9 +143,12 @@ const CallSystem = () => {
         setCallProgress(0);
         setPhoneNumber('');
 
+        // Refresh the call history
+        setRefreshTrigger(prev => prev + 1);
+
         toast({
           title: "Call completed",
-          description: "Keywords detected! SMS notifications sent.",
+          description: "Call completed successfully. Check the database for full details.",
           variant: "default",
         });
       }, 5000);
@@ -187,19 +192,19 @@ const CallSystem = () => {
             </h1>
           </div>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          <div className="space-y-2">
-            <Label htmlFor="emergency">Emergency Contact Number</Label>
-            <Input
-              id="emergency"
-              type="tel"
-              placeholder="+91 9178379226"
-              value={emergencyContactNumber}
-              onChange={(e) => setEmergencyContactNumber(e.target.value)}
-              disabled={isCallInProgress}
-            />
-          </div>
-          
-            Automated outbound calling with Eleven Labs Conversational AI and keyword-based SMS alerts
+            <div className="space-y-2">
+              <Label htmlFor="emergency">Emergency Contact Number</Label>
+              <Input
+                id="emergency"
+                type="tel"
+                placeholder="+91 9178379226"
+                value={emergencyContactNumber}
+                onChange={(e) => setEmergencyContactNumber(e.target.value)}
+                disabled={isCallInProgress}
+              />
+            </div>
+            
+            Automated outbound calling with real-time transcription and keyword-based SMS alerts
           </p>
         </div>
 
@@ -211,7 +216,7 @@ const CallSystem = () => {
               Initiate Call
             </CardTitle>
             <CardDescription>
-              Enter a phone number to start an AI-powered conversation
+              Enter a phone number to start an AI-powered conversation with real-time monitoring
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -255,7 +260,7 @@ const CallSystem = () => {
                 </div>
                 <Progress value={callProgress} className="w-full" />
                 <p className="text-sm text-muted-foreground text-center">
-                  AI is conversing with the recipient...
+                  AI is conversing with the recipient and monitoring for keywords...
                 </p>
               </div>
             )}
@@ -274,13 +279,16 @@ const CallSystem = () => {
             <CardContent>
               <div className="space-y-2">
                 <p><strong>Number:</strong> {currentCall.phoneNumber}</p>
-                <p><strong>Status:</strong> AI Conversation in progress</p>
+                <p><strong>Status:</strong> AI Conversation in progress with real-time transcription</p>
                 <p><strong>Monitoring for keywords:</strong></p>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {triggerWords.map((word) => (
                     <Badge key={word} variant="outline">{word}</Badge>
                   ))}
                 </div>
+                <p className="text-sm text-muted-foreground">
+                  All conversation data is being stored in the database for analysis.
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -361,8 +369,36 @@ const CallSystem = () => {
                   <li>• Twilio Voice Streaming</li>
                   <li>• Keyword Detection</li>
                   <li>• Automatic SMS Alerts</li>
-                  <li>• Call Transcription</li>
+                  <li>• Database Logging</li>
+                  <li>• Call Transcription Storage</li>
                 </ul>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Database className="h-5 w-5 text-primary" />
+                Database Features
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <h4 className="font-medium">Data Storage</h4>
+                <ul className="text-sm text-muted-foreground mt-2 space-y-1">
+                  <li>• Complete call records</li>
+                  <li>• Real-time transcripts</li>
+                  <li>• Keyword detections</li>
+                  <li>• SMS alert tracking</li>
+                  <li>• System logs</li>
+                  <li>• Performance analytics</li>
+                </ul>
+              </div>
+              <div className="text-center">
+                <Badge variant="default">
+                  Phase 2 Complete
+                </Badge>
               </div>
             </CardContent>
           </Card>
@@ -378,13 +414,13 @@ const CallSystem = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center p-3 bg-muted rounded-lg">
                   <div className="text-2xl font-bold text-primary">{callLogs.length}</div>
-                  <div className="text-sm text-muted-foreground">Total Calls</div>
+                  <div className="text-sm text-muted-foreground">UI Calls</div>
                 </div>
                 <div className="text-center p-3 bg-muted rounded-lg">
                   <div className="text-2xl font-bold text-success">
                     {callLogs.filter(call => call.keywordsDetected.length > 0).length}
                   </div>
-                  <div className="text-sm text-muted-foreground">Keywords Detected</div>
+                  <div className="text-sm text-muted-foreground">UI Keywords</div>
                 </div>
               </div>
               <div className="text-center">
@@ -392,63 +428,15 @@ const CallSystem = () => {
                   {isCallInProgress ? "System Active" : "Ready"}
                 </Badge>
               </div>
+              <p className="text-xs text-muted-foreground text-center">
+                Real database stats shown in Call History tab
+              </p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Call History */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Call History</CardTitle>
-            <CardDescription>Recent AI-powered conversations</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {callLogs.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No calls yet. Start your first AI conversation above.
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {callLogs.map((call) => (
-                  <div key={call.id} className="p-4 border rounded-lg space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(call.status)}
-                        <span className="font-medium">{call.phoneNumber}</span>
-                        <Badge variant="outline">{call.duration}</Badge>
-                      </div>
-                      <span className="text-sm text-muted-foreground">
-                        {call.timestamp.toLocaleTimeString()}
-                      </span>
-                    </div>
-                    
-                    {call.keywordsDetected.length > 0 && (
-                      <div>
-                        <span className="text-sm font-medium">Keywords Detected:</span>
-                        <div className="flex gap-1 mt-1">
-                          {call.keywordsDetected.map((keyword) => (
-                            <Badge key={keyword} variant="destructive" className="text-xs">
-                              {keyword}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {call.transcript && (
-                      <div>
-                        <span className="text-sm font-medium">Transcript:</span>
-                        <p className="text-sm text-muted-foreground mt-1 bg-muted p-2 rounded">
-                          {call.transcript}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Call History Component */}
+        <CallHistory refreshTrigger={refreshTrigger} />
       </div>
     </div>
   );
