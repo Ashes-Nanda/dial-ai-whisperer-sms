@@ -19,7 +19,7 @@ export interface Call {
 export interface Transcript {
   id: string;
   call_id: string;
-  transcript_type: 'partial' | 'final';
+  transcript_type: string;
   text: string;
   confidence: number;
   audio_start: number;
@@ -57,10 +57,10 @@ export interface SmsAlert {
 export interface SystemLog {
   id: string;
   call_id?: string;
-  level: 'INFO' | 'WARN' | 'ERROR' | 'DEBUG';
+  level: string;
   component: string;
   message: string;
-  metadata: Record<string, any>;
+  metadata: any;
   created_at: string;
 }
 
@@ -147,7 +147,7 @@ export class DatabaseService {
   // Transcript operations
   static async createTranscript(data: {
     call_id: string;
-    transcript_type: 'partial' | 'final';
+    transcript_type: string;
     text: string;
     confidence?: number;
     audio_start?: number;
@@ -310,10 +310,10 @@ export class DatabaseService {
   // System logging
   static async createSystemLog(data: {
     call_id?: string;
-    level: 'INFO' | 'WARN' | 'ERROR' | 'DEBUG';
+    level: string;
     component: string;
     message: string;
-    metadata?: Record<string, any>;
+    metadata?: any;
   }): Promise<SystemLog | null> {
     try {
       const { data: log, error } = await supabase
