@@ -87,29 +87,22 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Get Twilio credentials from environment variables
-    const twilioSid = Deno.env.get("TWILIO_SID");
-    const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
-    const twilioPhoneNumber = Deno.env.get("TWILIO_PHONE_NUMBER") || "+18152485651";
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    // Get Eleven Labs API key from environment variables
+    const elevenLabsApiKey = Deno.env.get("ELEVEN_LABS_API");
+    const agentId = "agent_01jyy3hts1fpsszcfrdgcfv2vn";
+    const agentPhoneNumberId = "phnum_01jzjz0m64e2ms2h05j8x96s53";
 
     await log('INFO', '🔐 Environment variables check', {
-      hasTwilioSid: !!twilioSid,
-      hasTwilioAuthToken: !!twilioAuthToken,
-      twilioPhoneNumber,
-      hasSupabaseUrl: !!supabaseUrl,
-      twilioSidPrefix: twilioSid ? twilioSid.substring(0, 8) + '...' : 'missing'
+      hasElevenLabsApiKey: !!elevenLabsApiKey,
+      agentId,
+      agentPhoneNumberId,
+      elevenLabsApiKeyPrefix: elevenLabsApiKey ? elevenLabsApiKey.substring(0, 8) + '...' : 'missing'
     });
 
-    if (!twilioSid || !twilioAuthToken || !twilioPhoneNumber || !supabaseUrl) {
-      await log('ERROR', '❌ Missing required environment variables', {
-        twilioSid: !!twilioSid,
-        twilioAuthToken: !!twilioAuthToken,
-        twilioPhoneNumber: !!twilioPhoneNumber,
-        supabaseUrl: !!supabaseUrl
-      });
+    if (!elevenLabsApiKey) {
+      await log('ERROR', '❌ Missing Eleven Labs API key');
       return new Response(
-        JSON.stringify({ error: "Server configuration error" }),
+        JSON.stringify({ error: "Server configuration error - Missing Eleven Labs API key" }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -117,68 +110,53 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Create the webhook URLs
-    const webhookUrl = `${supabaseUrl}/functions/v1/twilio-webhook`;
-    const statusCallbackUrl = `${supabaseUrl}/functions/v1/call-status`;
-
-    await log('INFO', '🔗 Webhook URLs configured', {
-      webhookUrl,
-      statusCallbackUrl
-    });
-
-    // Prepare Twilio API request
-    const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Calls.json`;
+    // Make the call to Eleven Labs Outbound Call API
+    const elevenLabsUrl = "https://api.elevenlabs.io/v1/convai/twilio/outbound-call";
     
-    const formData = new URLSearchParams();
-    formData.append("To", phoneNumber);
-    formData.append("From", twilioPhoneNumber);
-    formData.append("Url", webhookUrl);
-    formData.append("Method", "POST");
-    formData.append("StatusCallback", statusCallbackUrl);
-    formData.append("StatusCallbackMethod", "POST");
-    formData.append("StatusCallbackEvent", "initiated,ringing,answered,completed,busy,no-answer,failed,canceled");
-    formData.append("Timeout", "30");
-    formData.append("Record", "false"); // We're using streaming instead
+    const callData = {
+      agent_id: agentId,
+      agent_phone_number_id: agentPhoneNumberId,
+      to_number: phoneNumber
+    };
 
-    await log('INFO', '📤 Making call request to Twilio', {
+    await log('INFO', '📤 Making call request to Eleven Labs', {
       to: phoneNumber,
-      from: twilioPhoneNumber,
-      url: twilioUrl
+      elevenLabsUrl,
+      agentId,
+      agentPhoneNumberId
     });
 
-    // Make the call to Twilio API
-    const twilioResponse = await fetch(twilioUrl, {
+    // Make the call to Eleven Labs API
+    const elevenLabsResponse = await fetch(elevenLabsUrl, {
       method: "POST",
       headers: {
-        "Authorization": `Basic ${btoa(`${twilioSid}:${twilioAuthToken}`)}`,
-        "Content-Type": "application/x-www-form-urlencoded",
+        "xi-api-key": elevenLabsApiKey,
+        "Content-Type": "application/json",
       },
-      body: formData.toString(),
+      body: JSON.stringify(callData),
     });
 
-    const responseText = await twilioResponse.text();
+    const responseText = await elevenLabsResponse.text();
 
-    await log('INFO', '📊 Twilio API response', {
-      status: twilioResponse.status,
-      statusText: twilioResponse.statusText,
-      headers: Object.fromEntries(twilioResponse.headers.entries())
+    await log('INFO', '📊 Eleven Labs API response', {
+      status: elevenLabsResponse.status,
+      statusText: elevenLabsResponse.statusText,
+      headers: Object.fromEntries(elevenLabsResponse.headers.entries()),
+      responseBodyPreview: responseText.substring(0, 500)
     });
 
-    if (!twilioResponse.ok) {
-      await log('ERROR', '❌ Twilio API error', {
-        status: twilioResponse.status,
-        statusText: twilioResponse.statusText,
+    if (!elevenLabsResponse.ok) {
+      await log('ERROR', '❌ Eleven Labs API error', {
+        status: elevenLabsResponse.status,
+        statusText: elevenLabsResponse.statusText,
         responseBody: responseText
       });
 
       // Try to parse error details
       try {
         const errorData = JSON.parse(responseText);
-        await log('ERROR', '📋 Twilio error details', {
-          code: errorData.code,
-          message: errorData.message,
-          moreInfo: errorData.more_info,
-          status: errorData.status
+        await log('ERROR', '📋 Eleven Labs error details', {
+          error: errorData
         });
       } catch (parseError) {
         await log('ERROR', '❌ Could not parse error response');
@@ -193,26 +171,24 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const callData = JSON.parse(responseText);
+    const callResponseData = JSON.parse(responseText);
 
-    await log('INFO', '✅ Call initiated successfully', {
-      callSid: callData.sid,
-      status: callData.status,
-      direction: callData.direction,
-      from: callData.from,
-      to: callData.to,
-      dateCreated: callData.date_created
+    await log('INFO', '✅ Call initiated successfully via Eleven Labs', {
+      success: callResponseData.success,
+      message: callResponseData.message,
+      conversationId: callResponseData.conversation_id,
+      callSid: callResponseData.callSid
     });
 
     // Create call record in database
     const { data: callRecord, error: dbError } = await supabase
       .from('calls')
       .insert([{
-        call_sid: callData.sid,
+        call_sid: callResponseData.callSid || `el_${Date.now()}`,
         phone_number: phoneNumber,
         emergency_contact: emergencyContactNumber || '+919178379226',
-        status: callData.status,
-        direction: callData.direction || 'outbound',
+        status: 'initiated',
+        direction: 'outbound',
         started_at: new Date().toISOString()
       }])
       .select()
@@ -221,26 +197,24 @@ Deno.serve(async (req: Request) => {
     if (dbError) {
       await log('ERROR', '❌ Failed to create call record in database', {
         error: dbError.message,
-        callSid: callData.sid
+        callSid: callResponseData.callSid
       });
     } else {
       await log('INFO', '💾 Call record created in database', {
         callId: callRecord.id,
-        callSid: callData.sid
+        callSid: callResponseData.callSid
       }, callRecord.id);
     }
 
     return new Response(
       JSON.stringify({
         success: true,
-        callSid: callData.sid,
+        callSid: callResponseData.callSid,
         callId: callRecord?.id,
-        status: callData.status,
+        conversationId: callResponseData.conversation_id,
         phoneNumber: phoneNumber,
         emergencyContact: emergencyContactNumber,
-        message: "Call initiated successfully",
-        webhookUrl,
-        statusCallbackUrl,
+        message: callResponseData.message || "Call initiated successfully via Eleven Labs",
         timestamp: new Date().toISOString()
       }),
       {
