@@ -9,6 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { Phone, PhoneCall, MessageSquare, Settings, Loader2, CheckCircle, AlertTriangle, Database } from 'lucide-react';
 import CallHistory from './CallHistory';
+import ElevenLabsConfig from './ElevenLabsConfig';
 
 interface CallLog {
   id: string;
@@ -437,6 +438,9 @@ const CallSystem = () => {
 
         {/* Call History Component */}
         <CallHistory refreshTrigger={refreshTrigger} />
+
+        {/* Eleven Labs Configuration */}
+        <ElevenLabsConfig />
       </div>
     </div>
   );
