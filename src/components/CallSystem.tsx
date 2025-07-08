@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Phone, PhoneCall, MessageSquare, Settings, Loader2, CheckCircle, AlertTriangle, Database } from 'lucide-react';
 import CallHistory from './CallHistory';
 import ElevenLabsConfig from './ElevenLabsConfig';
+import SupabaseConnectionStatus from './SupabaseConnectionStatus';
 
 interface CallLog {
   id: string;
@@ -438,6 +439,9 @@ const CallSystem = () => {
 
         {/* Call History Component */}
         <CallHistory refreshTrigger={refreshTrigger} />
+
+        {/* Supabase Connection Status */}
+        <SupabaseConnectionStatus />
 
         {/* Eleven Labs Configuration */}
         <ElevenLabsConfig />
